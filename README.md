@@ -448,4 +448,12 @@ $env:SFM_DISABLE_GPU=1; npm run dev
 
 ## 十、许可证
 
-MIT
+MIT —— 完整条款见 [LICENSE](LICENSE)。
+
+这意味着你可以自由使用、修改、分发本项目（包括闭源商用），只需在副本中保留版权声明与许可证原文。
+
+> 注意：许可证**不覆盖项目名称**。「智能文件管理器 / SmartFileManager」这个名称不随 MIT 授权，
+> 基于本项目二次开发时请另取名字，避免混淆。
+
+**第三方组件**：本项目打包 Electron（含 Chromium、Node.js）。它们各自的许可证文件随安装目录一并分发，
+详见安装目录下的 `LICENSES.chromium.html` 等文件。运行时依赖（React / ReactDOM / Zustand）均为 MIT。
