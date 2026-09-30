@@ -1,0 +1,92 @@
+{
+  "name": "smart-file-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "智能文件管理器 —— 磁盘占用分析、大文件清理与 AI 智能分析（Electron + React + TypeScript）",
+  "main": "./out/main/index.js",
+  "author": "SmartFileManager",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
+    "typecheck:web": "tsc -p tsconfig.web.json --noEmit",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "build:web": "vite build --config vite.web.config.ts",
+    "preview:web": "node scripts/serve.cjs 5178",
+    "icon": "node scripts/make-icon.mjs",
+    "build:all": "npm run typecheck && npm run build && npm run build:web",
+    "capture": "electron scripts/capture.cjs",
+    "dist": "node scripts/package.mjs",
+    "clean:stage": "node scripts/clean-stage.cjs",
+    "measure": "node scripts/measure-startup.cjs",
+    "clean": "node -e \"for(const d of ['stage','release','out']){try{require('fs').rmSync(d,{recursive:true,force:true});console.log('已删除',d)}catch(e){console.log('跳过',d,e.message)}}\""
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  },
+  "build": {
+    "appId": "com.workbuddy.smartfilemanager",
+    "productName": "SmartFileManager",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "electronDist": "node_modules/electron/dist",
+    "asar": true,
+    "compression": "normal",
+    "artifactName": "SmartFileManager-${version}-${arch}.${ext}",
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "智能文件管理器-${version}-免安装版.${ext}",
+      "requestExecutionLevel": "user",
+      "unpackDirName": "SmartFileManager",
+      "splashImage": "build/splash.bmp",
+      "useZip": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "智能文件管理器",
+      "artifactName": "智能文件管理器-${version}-安装版.${ext}"
+    }
+  }
+}

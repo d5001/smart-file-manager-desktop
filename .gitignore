@@ -1,0 +1,23 @@
+node_modules/
+out/
+dist/
+release/
+stage/
+stage-*/
+web/
+.vite/
+*.log
+.DS_Store
+.env
+.env.local
+# 本地工作区（含绝对路径与个人笔记）
+.workbuddy/
+# 显卡驱动日志目录（非项目内容）
+NVIDIA Corporation/
+# 脚本产出的预览图（可复现，不进仓库）
+docs/preview/
+# 临时编译目录
+.tmp-tree/
+
+# 内部自查报告：含本应用自身的安全问题与利用路径，不适合公开
+docs/review/

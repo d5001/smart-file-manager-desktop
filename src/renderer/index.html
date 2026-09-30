@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*"
+    />
+    <title>智能文件管理器</title>
+    <style>
+      /*
+       * 启动骨架屏 —— 刻意写在这里而不是 React 里。
+       *
+       * 原因：JS 包要下载 + 解析 + 执行完才会画出第一个像素。把外壳（侧栏 + 顶栏 +
+       * 加载提示）做成静态 HTML/CSS，浏览器一解析完就能立刻上屏，
+       * 用户双击后几乎立刻看到"程序起来了"，而不是先对着空白窗口等两秒。
+       * React 挂载时会接管 #root，这些节点自然被替换掉。
+       */
+      :root {
+        --boot-bg: #f4f5f7;
+        --boot-panel: #ffffff;
+        --boot-border: #e2e5ea;
+        --boot-text: #1b1f26;
+        --boot-dim: #8b93a1;
+        --boot-accent: #2f6fed;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --boot-bg: #16181d;
+          --boot-panel: #1d2026;
+          --boot-border: #2c3138;
+          --boot-text: #e6e9ee;
+          --boot-dim: #79818f;
+          --boot-accent: #5b8def;
+        }
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        height: 100vh;
+        background: var(--boot-bg);
+        color: var(--boot-text);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC',
+          'Noto Sans CJK SC', sans-serif;
+      }
+      #boot-aside {
+        width: 232px;
+        flex: 0 0 232px;
+        background: var(--boot-panel);
+        border-right: 1px solid var(--boot-border);
+      }
+      #boot-brand {
+        height: 40px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 14px;
+        font-size: 12.5px;
+        font-weight: 650;
+        color: var(--boot-dim);
+      }
+      #boot-brand svg {
+        flex: 0 0 auto;
+      }
+      .boot-row {
+        height: 32px;
+        margin: 4px 12px;
+        border-radius: 7px;
+        background: linear-gradient(
+          90deg,
+          var(--boot-border) 0%,
+          color-mix(in srgb, var(--boot-border) 45%, transparent) 50%,
+          var(--boot-border) 100%
+        );
+        background-size: 200% 100%;
+        animation: boot-shimmer 1.4s ease-in-out infinite;
+      }
+      #boot-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #boot-topbar {
+        height: 52px;
+        flex: 0 0 52px;
+        border-bottom: 1px solid var(--boot-border);
+        background: var(--boot-panel);
+        display: flex;
+        align-items: center;
+        padding-left: 18px;
+      }
+      #boot-topbar-title {
+        height: 15px;
+        width: 120px;
+        border-radius: 5px;
+        background: var(--boot-border);
+      }
+      #boot-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+      }
+      #boot-spinner {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 2.5px solid var(--boot-border);
+        border-top-color: var(--boot-accent);
+        animation: boot-spin 0.7s linear infinite;
+      }
+      #boot-hint {
+        font-size: 12.5px;
+        color: var(--boot-dim);
+        letter-spacing: 0.2px;
+      }
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes boot-shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-row,
+        #boot-spinner {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      启动骨架放在 #root 之外，作为一层浮层。
+      放 #root 里面的话会被 React 挂载时直接清掉，反而闪一下；
+      改成独立浮层后，由 App 首次渲染完成时调用 dismissBootSplash() 淡出。
+    -->
+    <div id="boot-splash">
+      <aside id="boot-aside">
+        <div id="boot-brand">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="2" y="5" width="20" height="14" rx="3" stroke="currentColor" stroke-width="1.9" />
+            <path d="M2 12h20" stroke="currentColor" stroke-width="1.9" />
+            <circle cx="7" cy="16" r="1.3" fill="currentColor" />
+          </svg>
+          <span>智能文件管理器</span>
+        </div>
+        <div class="boot-row" style="width: 60%"></div>
+        <div class="boot-row" style="width: 78%"></div>
+        <div class="boot-row" style="width: 70%"></div>
+        <div class="boot-row" style="width: 84%"></div>
+        <div class="boot-row" style="width: 64%"></div>
+      </aside>
+      <div id="boot-main">
+        <div id="boot-topbar"><div id="boot-topbar-title"></div></div>
+        <div id="boot-body">
+          <div id="boot-spinner"></div>
+          <div id="boot-hint">正在启动…</div>
+        </div>
+      </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

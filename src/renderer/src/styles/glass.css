@@ -1,0 +1,486 @@
+/* ==================================================================
+   液态玻璃（Liquid Glass）
+   ------------------------------------------------------------------
+   由设置项「外观 → 液态玻璃效果」开启。开启后 html 上会挂 data-glass="on"，
+   玻璃表面的折射滤镜由 src/renderer/src/glass.ts 逐元素注入（backdrop-filter: url(#…)）。
+
+   为什么需要自己造背景场景：#feDisplacementMap 折射的是「身后的像素」，
+   纯色背景上折射是看不出来的 —— 必须有彩色光斑 + 细条纹这类可辨认细节。
+   ================================================================== */
+
+/* ---------------- 玻璃背后的动态场景 ---------------- */
+
+#glass-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  /*
+   * 背景用变量而不是直接写渐变。
+   * 原因：#glass-scene 是 ID 选择器（优先级 1,0,0），
+   * 而深色覆盖写成 `html[data-theme='dark'] #glass-scene` 只有 (1,2,1) 里的属性部分更高 ——
+   * 用变量就绕开了优先级之争：变量按 html 上的主题解析，ID 规则只管取用。
+   */
+  background: var(--glass-scene-bg, linear-gradient(160deg, #dbe5ff 0%, #f4e6ff 38%, #e2f4ff 72%, #ffeef6 100%));
+}
+html[data-glass='on'] {
+  --glass-scene-bg: linear-gradient(160deg, #dbe5ff 0%, #f4e6ff 38%, #e2f4ff 72%, #ffeef6 100%);
+}
+html[data-glass='on'][data-theme='dark'] {
+  --glass-scene-bg: linear-gradient(160deg, #0d1220 0%, #1a1030 38%, #0b1a24 72%, #1d1020 100%);
+}
+html[data-glass='on'] #glass-scene {
+  opacity: 1;
+}
+
+#glass-scene .lg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(85px);
+  will-change: transform;
+}
+#glass-scene .lg-b1 {
+  width: 46vmax; height: 46vmax; left: -14vmax; top: -16vmax;
+  background: radial-gradient(circle, #4f7cff, transparent 66%);
+  opacity: 0.5;
+  animation: lg-d1 26s ease-in-out infinite alternate;
+}
+#glass-scene .lg-b2 {
+  width: 40vmax; height: 40vmax; right: -12vmax; top: 2vmax;
+  background: radial-gradient(circle, #ff5ec7, transparent 66%);
+  opacity: 0.42;
+  animation: lg-d2 31s ease-in-out infinite alternate;
+}
+#glass-scene .lg-b3 {
+  width: 38vmax; height: 38vmax; left: 20vmax; bottom: -16vmax;
+  background: radial-gradient(circle, #22d3ee, transparent 66%);
+  opacity: 0.45;
+  animation: lg-d3 24s ease-in-out infinite alternate;
+}
+#glass-scene .lg-b4 {
+  width: 30vmax; height: 30vmax; right: 10vmax; bottom: -10vmax;
+  background: radial-gradient(circle, #fbbf24, transparent 66%);
+  opacity: 0.32;
+  animation: lg-d1 34s ease-in-out infinite alternate-reverse;
+}
+html[data-theme='dark'] #glass-scene .lg-orb {
+  opacity: 0.34;
+  filter: blur(95px);
+}
+
+/* 细条纹：给折射提供高频细节，边缘的"玻璃厚度感"主要来自它 */
+#glass-scene .lg-stripes {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(30, 41, 59, 0.075) 0 2px, transparent 2px 64px),
+    repeating-linear-gradient(0deg, rgba(30, 41, 59, 0.035) 0 2px, transparent 2px 64px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 82%, transparent 100%);
+}
+html[data-theme='dark'] #glass-scene .lg-stripes {
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.055) 0 2px, transparent 2px 64px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 64px);
+}
+
+@keyframes lg-d1 { to { transform: translate(10vmax, 8vmax) scale(1.18); } }
+@keyframes lg-d2 { to { transform: translate(-9vmax, 10vmax) scale(0.88); } }
+@keyframes lg-d3 { to { transform: translate(8vmax, -9vmax) scale(1.12); } }
+
+/* 「背景动效」关掉时静止（省电） */
+html[data-glass-scene='off'] #glass-scene .lg-orb {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #glass-scene .lg-orb { animation: none; }
+}
+
+/* ---------------- 让整个应用坐在场景之上 ---------------- */
+
+html[data-glass='on'] body {
+  background: transparent !important;
+}
+html[data-glass='on'] #root {
+  position: relative;
+  z-index: 1;
+}
+html[data-glass='on'] .shell {
+  background: transparent !important;
+}
+
+/* ---------------- 令牌半透明化：所有组件自动跟随 ----------------
+   这样不用去逐个改组件的 CSS —— 它们本来就用这些变量。 */
+
+html[data-glass='on'] {
+  --bg: transparent;
+  --bg-elevated: rgba(255, 255, 255, 0.52);
+  --bg-sunken: rgba(255, 255, 255, 0.26);
+  --bg-hover: rgba(255, 255, 255, 0.62);
+  --bg-active: rgba(255, 255, 255, 0.8);
+  --border: rgba(255, 255, 255, 0.5);
+  --border-strong: rgba(255, 255, 255, 0.72);
+  --shadow-sm: 0 2px 8px -2px rgba(49, 46, 129, 0.2);
+  --shadow: 0 18px 44px -18px rgba(49, 46, 129, 0.42);
+  --shadow-lg: 0 28px 60px -24px rgba(49, 46, 129, 0.55);
+}
+
+html[data-glass='on'][data-theme='dark'] {
+  --bg: transparent;
+  --bg-elevated: rgba(30, 35, 44, 0.58);
+  --bg-sunken: rgba(14, 17, 22, 0.4);
+  --bg-hover: rgba(255, 255, 255, 0.09);
+  --bg-active: rgba(255, 255, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.24);
+  --shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.5);
+  --shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 28px 60px -24px rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * 把「浅色底」系列色板也改成半透明。
+ *
+ * 这些 --*-soft 是不透明的马卡龙色（#eaf1ff / #fdf3e3 …），
+ * 用在提示条、标签、徽章、选中态上。玻璃模式下如果不动它们，
+ * 就会在玻璃界面里浮出一块块"实色方块" —— 提示条尤其明显。
+ * 用 color-mix 掺入透明，颜色仍然跟着主题走（--accent / --danger 本身已按明暗解析）。
+ */
+html[data-glass='on'] {
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-soft-2: color-mix(in srgb, var(--accent) 26%, transparent);
+  --danger-soft: color-mix(in srgb, var(--danger) 16%, transparent);
+  --warning-soft: color-mix(in srgb, var(--warning) 20%, transparent);
+  --success-soft: color-mix(in srgb, var(--success) 16%, transparent);
+}
+
+/* ---------------- 玻璃基底 ----------------
+   .lg 由 JS 加到「需要折射」的元素上；不带 .lg 的元素只享受上面的半透明令牌。 */
+
+html[data-glass='on'] .lg {
+  position: relative;
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  /* 内阴影模拟玻璃边缘的镜面高光 + 厚度 */
+  box-shadow:
+    inset 1.6px 1.6px 1.2px -1px rgba(255, 255, 255, 0.95),
+    inset -1.6px -1.6px 1.2px -1px rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    inset 0 0 34px rgba(255, 255, 255, 0.15),
+    var(--shadow-lg) !important;
+}
+html[data-glass='on'][data-theme='dark'] .lg {
+  box-shadow:
+    inset 1.6px 1.6px 1.2px -1px rgba(255, 255, 255, 0.35),
+    inset -1.6px -1.6px 1.2px -1px rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    inset 0 0 34px rgba(255, 255, 255, 0.05),
+    var(--shadow-lg) !important;
+}
+
+/*
+ * 面板内部的卡片不要再叠一层大投影。
+ *
+ * 三条卡片的 --shadow-lg（0 28px 60px -24px 深蓝）会互相叠加，在玻璃面板上糊出一片灰 ——
+ * 用户反馈"右边灰色卡片这个灰色不符合液态玻璃"说的就是这个。
+ * 而且这里的 !important 还会盖掉业务代码特意写的 boxShadow: 'none'（内联样式优先级低于 !important），
+ * 所以必须显式排除"嵌套在面板里的卡片"。
+ */
+html[data-glass='on'] .cart .card.lg,
+html[data-glass='on'] .settings-nav .card.lg,
+html[data-glass='on'] .card .card.lg {
+  box-shadow:
+    inset 1.6px 1.6px 1.2px -1px rgba(255, 255, 255, 0.9),
+    inset -1.6px -1.6px 1.2px -1px rgba(255, 255, 255, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+}
+html[data-glass='on'][data-theme='dark'] .cart .card.lg,
+html[data-glass='on'][data-theme='dark'] .settings-nav .card.lg,
+html[data-glass='on'][data-theme='dark'] .card .card.lg {
+  box-shadow:
+    inset 1.6px 1.6px 1.2px -1px rgba(255, 255, 255, 0.3),
+    inset -1.6px -1.6px 1.2px -1px rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+}
+
+/*
+ * 鼠标跟随的镜面高光。
+ *
+ * 关键在**半径和衰减**，不在强度：
+ *   · 半径 240px + 平缓衰减 → 在小卡片上是个亮点，在侧栏/标签栏这种大面板上会把整块点亮（太亮、发白）
+ *   · 半径 130px + 三段快速衰减 → 只照亮光标周围一小片，像玻璃真的反射了一束光，面板多大都一样好看
+ * 亮度也按主题分开：深色背景上同样的白会显得刺眼，所以强度只有浅色的三分之一左右。
+ */
+html[data-glass='on'] .lg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    130px circle at var(--lg-mx, -9999px) var(--lg-my, -9999px),
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.16) 38%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+html[data-glass='on'] .lg:hover::after {
+  opacity: 1;
+}
+html[data-glass='on'][data-theme='dark'] .lg::after {
+  background: radial-gradient(
+    130px circle at var(--lg-mx, -9999px) var(--lg-my, -9999px),
+    rgba(255, 255, 255, 0.17),
+    rgba(255, 255, 255, 0.05) 38%,
+    transparent 70%
+  );
+}
+
+/* ---------------- 具体表面：让侧栏变成悬浮玻璃面板 ---------------- */
+
+/*
+ * 左上角的品牌标题原来贴在 x=14 —— 玻璃模式侧栏变成了从左 10px 开始、圆角 22px 的悬浮面板，
+ * 于是文字正好压在圆角弧线上，看着像"贴歪了"。
+ * 这里把标题条改成与侧栏顶部内边距对齐（左 30px、垂直居中在侧栏的头部留白里）。
+ */
+html[data-glass='on'] .titlebar {
+  padding-left: 30px;
+  height: 56px;
+}
+html[data-glass='on'] .titlebar__brand {
+  gap: 9px;
+}
+
+html[data-glass='on'] .sidebar {
+  /*
+   * 右边也要留缝。
+   * 之前只给了上/左/下外边距，右边缘紧贴内容区 —— 四角里右边那两角的圆角
+   * 等于是白给了，整块看起来就还是一块"贴着边的方块"。
+   */
+  margin: 10px 10px 10px 10px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  /* 侧栏本身不做折射（面积太大且要滚动），改用普通磨砂 */
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+html[data-glass='on'] .sidebar__scroll {
+  padding-top: 46px;
+}
+html[data-glass='on'] .sidebar-header,
+html[data-glass='on'] .sidebar__bottom {
+  background: transparent !important;
+  border-color: var(--border) !important;
+}
+
+/*
+ * 顶栏：从"一条透明的裸带子"改成一块真正的玻璃面板。
+ *
+ * 关键细节（用户反馈过"右上角圆角别扭"）：
+ *   - **右边不留缝** —— 原生窗口按钮就贴在窗口右上角，顶栏必须延伸到那里，
+ *     否则按钮会有一半落在玻璃外面，而玻璃边缘的弧线正好从按钮下面穿过去
+ *   - **右下角不圆** —— 圆角会在窗口右边缘上切出一个缺口（像被咬掉一块）
+ *   - 只圆左下角：那里左侧是侧栏留的缝，弧度才成立
+ */
+html[data-glass='on'] .topbar {
+  margin: 0 0 0 10px;
+  background: var(--bg-elevated) !important;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0 0 0 var(--radius-lg);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+}
+html[data-glass='on'][data-theme='dark'] .topbar {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-glass='on'] .nav-item.active {
+  background: rgba(47, 111, 237, 0.18) !important;
+  box-shadow: inset 0 0 0 1px rgba(47, 111, 237, 0.28);
+}
+html[data-glass='on'][data-theme='dark'] .nav-item.active {
+  background: rgba(91, 141, 239, 0.24) !important;
+  box-shadow: inset 0 0 0 1px rgba(91, 141, 239, 0.34);
+}
+
+/* 设置页的标签导航本身就是一块面板，给它内边距，别让标签贴着玻璃边缘 */
+html[data-glass='on'] .settings-nav {
+  padding: 8px;
+  gap: 3px;
+  /*
+   * 必须显式给圆角：.lg 只负责把背景变半透明 + 加高光边，不带圆角
+   * （顶栏就该是方的）。漏给就变成"半透明方块" —— 这就是之前 .settings-nav 的问题。
+   */
+  border-radius: var(--radius-lg);
+}
+
+/* 右侧信息栏在别的页面是贴边的，玻璃模式下让它也变成浮动面板 */
+html[data-glass='on'] .cart {
+  margin: 10px 10px 10px 0;
+  border-radius: var(--radius-lg);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+/* 底部输入区：原本是一条通栏的实色方块，改成浮动圆角玻璃 */
+html[data-glass='on'] .chat-compose {
+  margin: 0 14px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+/* 面板内部的头部条：别再有自己的一块实色，让它融进玻璃面板 */
+html[data-glass='on'] .list-pane__head,
+html[data-glass='on'] .card__head {
+  background: transparent !important;
+}
+
+/*
+ * 文件浏览页：把一条条堆叠的实色横条，全部改成独立的浮动玻璃条。
+ *
+ * 这一页原本是「面包屑 / 快捷位置 / 工具栏 / 筛选条件 / 表格 / 状态栏」一堆贴边横条叠在一起，
+ * 玻璃模式下它们各自带着自己的实色底，看起来就是一摞方块 —— 这正是用户说的
+ * "文件预览内还是很多方正块"。
+ *
+ * `.list-pane__head` / `.list-pane__foot` 有各自的类，`.bar-row` 则覆盖
+ * 快捷位置、筛选条件、筛选进度、清理清单提示这几条通栏（它们原来是**没有类名的裸 div**，
+ * 视觉属性写在 inline style 里 —— 所以第一版规则漏了它们，界面上就那一条一直是方块）。
+ */
+html[data-glass='on'] .list-pane__head,
+html[data-glass='on'] .list-pane__foot,
+html[data-glass='on'] .bar-row {
+  padding: 10px 14px;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated) !important;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), var(--shadow-sm);
+}
+html[data-glass='on'] .list-pane__head,
+html[data-glass='on'] .bar-row {
+  margin: 8px 12px 0;
+}
+/* 尾部的两条（foot / 清理清单提示）多留一段下边距，别贴着内容区底边 */
+html[data-glass='on'] .list-pane__foot,
+html[data-glass='on'] .bar-row--top {
+  margin: 8px 12px 12px;
+}
+
+/* 表格容器同样变成浮动玻璃面板；透明度从 0.8 降到 0.56，把玻璃感找回来 */
+html[data-glass='on'] .list-pane__body {
+  margin: 8px 12px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.56);
+}
+html[data-glass='on'][data-theme='dark'] .list-pane__body {
+  background: rgba(24, 28, 35, 0.56);
+}
+
+/* 表格自身的斑马纹/悬停色也统一成中性，别让渐变把行染成彩色 */
+html[data-glass='on'] table.tbl tbody tr:nth-child(even) td {
+  background: rgba(47, 111, 237, 0.045);
+}
+html[data-glass='on'] table.tbl tbody tr:hover td {
+  background: rgba(47, 111, 237, 0.12) !important;
+}
+html[data-glass='on'][data-theme='dark'] table.tbl tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+/* 表格 / 代码块等密集内容保持较高不透明度，否则读起来累 */
+html[data-glass='on'] .table th {
+  background: var(--bg-sunken) !important;
+  backdrop-filter: blur(10px) saturate(135%);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
+}
+html[data-glass='on'] .modal {
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+}
+
+/* 卡片轻微上浮，强化"玻璃是浮着的"观感 */
+html[data-glass='on'] .card {
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1.2), box-shadow 0.25s;
+}
+html[data-glass='on'] .card:hover {
+  transform: translateY(-2px);
+}
+
+/* ---------------- 入场动画 ----------------
+ *
+ * 关键：动画用独立的 `translate` 属性而不是 `transform`。
+ * 如果动画里写了 transform，配合 fill-mode: both 会在动画结束后**锁住 transform**，
+ * 卡片的 :hover 上浮（transform: translateY(-2px)）就再也不生效了。
+ * `translate` 与 `transform` 是两个独立通道，互不干扰。
+ */
+html[data-glass='on'] .card,
+html[data-glass='on'] .stat,
+html[data-glass='on'] .drive-card,
+html[data-glass='on'] .cart,
+html[data-glass='on'] .settings-nav,
+html[data-glass='on'] .list-pane__head,
+html[data-glass='on'] .list-pane__foot,
+html[data-glass='on'] .bar-row {
+  animation: lg-in 0.42s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes lg-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+/* 网格里的卡片做交错延迟，看起来像依次浮上来 */
+html[data-glass='on'] .grid > *:nth-child(1) { animation-delay: 0.02s; }
+html[data-glass='on'] .grid > *:nth-child(2) { animation-delay: 0.06s; }
+html[data-glass='on'] .grid > *:nth-child(3) { animation-delay: 0.1s; }
+html[data-glass='on'] .grid > *:nth-child(4) { animation-delay: 0.14s; }
+html[data-glass='on'] .grid > *:nth-child(5) { animation-delay: 0.18s; }
+html[data-glass='on'] .grid > *:nth-child(6) { animation-delay: 0.22s; }
+
+/* 浏览页自上而下依次落下 */
+html[data-glass='on'] .list-pane__head:nth-of-type(1) { animation-delay: 0s; }
+html[data-glass='on'] .bar-row { animation-delay: 0.04s; }
+html[data-glass='on'] .list-pane__head:nth-of-type(2) { animation-delay: 0.08s; }
+html[data-glass='on'] .list-pane__body { animation: lg-in 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) 0.12s both; }
+html[data-glass='on'] .list-pane__foot { animation-delay: 0.16s; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-glass='on'] .card,
+  html[data-glass='on'] .stat,
+  html[data-glass='on'] .drive-card,
+  html[data-glass='on'] .cart,
+  html[data-glass='on'] .settings-nav,
+  html[data-glass='on'] .list-pane__head,
+  html[data-glass='on'] .list-pane__foot,
+  html[data-glass='on'] .list-pane__body,
+  html[data-glass='on'] .bar-row {
+    animation: none;
+  }
+  html[data-glass='on'] .card:hover {
+    transform: none;
+  }
+}
+
+/* 骨架屏也要跟着玻璃走，避免启动瞬间闪一下纯色 */
+html[data-glass='on'] #boot-splash {
+  background: transparent !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}

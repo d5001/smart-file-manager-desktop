@@ -1,0 +1,146 @@
+:root {
+  --accent: #2f6fed;
+  --accent-hover: #245ad0;
+  --accent-soft: #eaf1ff;
+  --accent-soft-2: #d8e6ff;
+
+  --danger: #e5484d;
+  --danger-soft: #fdecec;
+  --warning: #d7871a;
+  --warning-soft: #fdf3e3;
+  --success: #12a150;
+  --success-soft: #e8f7ee;
+  --purple: #8250df;
+  --teal: #0f9bab;
+
+  --bg: #f4f5f7;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #eceef1;
+  --bg-hover: #f0f2f5;
+  --bg-active: #e6ebf5;
+
+  --text: #1b1f26;
+  --text-secondary: #5b6472;
+  --text-tertiary: #8b93a1;
+  --text-inverse: #ffffff;
+
+  --border: #e2e5ea;
+  --border-strong: #cdd3dc;
+
+  --shadow-sm: 0 1px 2px rgba(20, 26, 38, 0.06);
+  --shadow: 0 4px 16px rgba(20, 26, 38, 0.08);
+  --shadow-lg: 0 16px 48px rgba(20, 26, 38, 0.16);
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  --sidebar-w: 232px;
+  --titlebar-h: 40px;
+
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC',
+    'Hiragino Sans GB', 'Noto Sans CJK SC', sans-serif;
+  --mono: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
+}
+
+[data-theme='dark'] {
+  --accent: #5b8def;
+  --accent-hover: #7ba4f5;
+  --accent-soft: #1c2942;
+  --accent-soft-2: #24365a;
+
+  --danger: #ef5f64;
+  --danger-soft: #3a1f22;
+  --warning: #e0a13c;
+  --warning-soft: #3a2e18;
+  --success: #35c46f;
+  --success-soft: #16301f;
+  --purple: #a371f7;
+  --teal: #2ab8c9;
+
+  --bg: #14171c;
+  --bg-elevated: #1c2027;
+  --bg-sunken: #101318;
+  --bg-hover: #23282f;
+  --bg-active: #2a313b;
+
+  --text: #e6e9ee;
+  --text-secondary: #a3abb8;
+  --text-tertiary: #737d8c;
+  --text-inverse: #12151a;
+
+  --border: #2b313a;
+  --border-strong: #3a424e;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+  background-clip: content-box;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
