@@ -21,3 +21,6 @@ docs/preview/
 
 # 内部自查报告：含本应用自身的安全问题与利用路径，不适合公开
 docs/review/
+
+# Release 上传用的 ASCII 命名副本（临时，体积很大）
+release-upload/
